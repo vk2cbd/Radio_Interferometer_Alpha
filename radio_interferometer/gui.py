@@ -59,15 +59,15 @@ class InterferometryApp(tk.Tk):
 
         self.inputs: dict[str, tk.StringVar] = {}
         fields = [
-            ("observing_frequency_mhz", "Observing freq (MHz)", "1420.405751"),
-            ("intermediate_frequency_mhz", "B210 tune IF (MHz)", "150.0"),
+            ("observing_frequency_mhz", "Observing freq (MHz)", "8500.0"),
+            ("intermediate_frequency_mhz", "B210 tune IF (MHz)", "1150.0"),
             ("ra_deg", "Source RA (deg)", "83.6331"),
             ("dec_deg", "Source DEC (deg)", "22.0145"),
             ("observer_lat_deg", "Observer lat (deg)", "-33.8688"),
             ("observer_lon_deg", "Observer lon (deg)", "151.2093"),
             ("bandwidth_mhz", "Bandwidth (MHz)", "2.0"),
             ("bins", "FX bins", "1024"),
-            ("baseline_east_m", "Baseline east (m)", "10.0"),
+            ("baseline_east_m", "Baseline east (m)", "6.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
             ("b210_gain_db", "B210 gain (dB)", "35.0"),

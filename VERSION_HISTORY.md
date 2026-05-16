@@ -1,5 +1,11 @@
 # Version History
 
+## 0.1.4 - Updated Observing Defaults
+
+- Set the default observing frequency to 8500 MHz.
+- Set the default B210 IF tune frequency to 1150 MHz.
+- Set the default east baseline to 6 m.
+
 ## 0.1.3 - B210 Overflow Recovery
 
 - Drain and integrate multiple B210 FFT blocks per GUI refresh so the SDR
