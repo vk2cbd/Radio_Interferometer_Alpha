@@ -108,7 +108,7 @@ class B210SoapySource(SampleSource):
     def start(self) -> None:
         try:
             import SoapySDR  # type: ignore
-            from SoapySDR import SOAPY_SDR_CF32, SOAPY_SDR_RX  # type: ignore
+            from SoapySDR import SOAPY_SDR_CF32, SOAPY_SDR_HAS_TIME, SOAPY_SDR_RX  # type: ignore
         except ImportError as exc:
             raise RuntimeError(
                 "SoapySDR is not installed. Install UHD/SoapySDR or use the simulator."
@@ -155,7 +155,7 @@ class B210SoapySource(SampleSource):
                 "create two-channel RX stream",
                 lambda: sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32, [0, 1]),
             )
-            run_b210_step("activate RX stream", lambda: sdr.activateStream(rx_stream))
+            activate_b210_stream_with_timed_start(sdr, rx_stream, SOAPY_SDR_HAS_TIME)
         except Exception:
             if sdr is not None and rx_stream is not None:
                 try:
@@ -212,6 +212,18 @@ def run_b210_step(step_name: str, action):
     except Exception as exc:
         detail = str(exc).strip() or exc.__class__.__name__
         raise RuntimeError(f"B210 failed while trying to {step_name}: {detail}") from exc
+
+
+def activate_b210_stream_with_timed_start(sdr, rx_stream, has_time_flag: int) -> None:
+    """Start a two-channel B210 stream with a future timestamp for time alignment."""
+
+    run_b210_step("reset B210 hardware time", lambda: sdr.setHardwareTime(0))
+    start_time_ns = run_b210_step("read B210 hardware time", lambda: sdr.getHardwareTime())
+    start_time_ns += 100_000_000
+    run_b210_step(
+        "activate time-aligned RX stream",
+        lambda: sdr.activateStream(rx_stream, flags=has_time_flag, timeNs=start_time_ns),
+    )
 
 
 def geometric_delay_seconds(config: ObservationConfig, when: datetime | None = None) -> float:

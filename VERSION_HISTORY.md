@@ -1,5 +1,10 @@
 # Version History
 
+## 0.1.2 - B210 Timed Stream Start
+
+- Start the two-channel B210 RX stream with a future hardware timestamp so UHD
+  can align both channels.
+
 ## 0.1.1 - B210 Startup Diagnostics
 
 - Switched B210 startup to manual gain instead of automatic gain mode.
