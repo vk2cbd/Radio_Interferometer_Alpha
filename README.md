@@ -47,6 +47,7 @@ If B210 startup reports a UHD control timeout such as
 - Connect the B210 directly to a USB 3 port, not through a hub.
 - Close any other program using the B210.
 - Start with a low bandwidth such as `1.0` or `2.0` MHz.
+- Use larger FX bins if overflows continue, for example `4096` or `8192`.
 - Use manual B210 gain in the GUI, for example `35` dB.
 - If more than one SDR is connected, set `B210 device args` to the serial, for
   example `serial=XXXXXXXX`.

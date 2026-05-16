@@ -1,5 +1,11 @@
 # Version History
 
+## 0.1.3 - B210 Overflow Recovery
+
+- Drain and integrate multiple B210 FFT blocks per GUI refresh so the SDR
+  receive buffer is less likely to overflow.
+- Treat individual B210 RX overflow reports as recoverable runtime events.
+
 ## 0.1.2 - B210 Timed Stream Start
 
 - Start the two-channel B210 RX stream with a future hardware timestamp so UHD

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import ceil
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -11,7 +12,16 @@ from matplotlib.figure import Figure
 
 from . import __version__
 from .correlator import CorrelatorConfig, FXCorrelator
-from .sources import B210SoapySource, ObservationConfig, SampleSource, SimulatedInterferometerSource
+from .sources import (
+    B210ReadOverflow,
+    B210SoapySource,
+    ObservationConfig,
+    SampleSource,
+    SimulatedInterferometerSource,
+)
+
+GUI_REFRESH_MS = 80
+MAX_BLOCKS_PER_UPDATE = 256
 
 
 class InterferometryApp(tk.Tk):
@@ -27,6 +37,8 @@ class InterferometryApp(tk.Tk):
         self._correlator: FXCorrelator | None = None
         self._running = False
         self._latest_config: ObservationConfig | None = None
+        self._blocks_per_update = 1
+        self._overflow_count = 0
 
         self._build_controls()
         self._build_plots()
@@ -128,6 +140,8 @@ class InterferometryApp(tk.Tk):
         self._latest_config = config
         self._source = source
         self._correlator = correlator
+        self._blocks_per_update = self._calculate_blocks_per_update(config)
+        self._overflow_count = 0
         self._running = True
         self.start_button.configure(state=tk.DISABLED)
         self.stop_button.configure(state=tk.NORMAL)
@@ -157,16 +171,33 @@ class InterferometryApp(tk.Tk):
             return
 
         try:
-            antenna_a, antenna_b = self._source.read(self._correlator.config.bins)
-            result = self._correlator.process(antenna_a, antenna_b)
-            self._draw_result(result)
-            self.status.set("Running")
+            result = None
+            processed = 0
+            for _ in range(self._blocks_per_update):
+                try:
+                    antenna_a, antenna_b = self._source.read(self._correlator.config.bins)
+                except B210ReadOverflow:
+                    self._overflow_count += 1
+                    continue
+                result = self._correlator.process(antenna_a, antenna_b)
+                processed += 1
+
+            if result is not None:
+                self._draw_result(result)
+
+            if self._overflow_count:
+                self.status.set(
+                    f"Running; recovered {self._overflow_count} B210 overflow(s). "
+                    f"Processed {processed}/{self._blocks_per_update} blocks."
+                )
+            else:
+                self.status.set(f"Running; processed {processed} blocks/update")
         except Exception as exc:
             self.stop()
             messagebox.showerror("Runtime error", str(exc))
             return
 
-        self.after(60, self._update_loop)
+        self.after(GUI_REFRESH_MS, self._update_loop)
 
     def _draw_result(self, result) -> None:
         config = self._latest_config
@@ -222,6 +253,14 @@ class InterferometryApp(tk.Tk):
         if self.source_mode.get() == "B210 / SoapySDR":
             return B210SoapySource(config)
         return SimulatedInterferometerSource(config)
+
+    def _calculate_blocks_per_update(self, config: ObservationConfig) -> int:
+        if self.source_mode.get() != "B210 / SoapySDR":
+            return 1
+
+        samples_per_update = config.sample_rate_hz * (GUI_REFRESH_MS / 1000.0)
+        blocks = ceil(samples_per_update / config.bins)
+        return max(1, min(MAX_BLOCKS_PER_UPDATE, blocks))
 
 
 def main() -> None:

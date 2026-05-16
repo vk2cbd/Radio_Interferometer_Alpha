@@ -55,6 +55,10 @@ class SampleSource:
         raise NotImplementedError
 
 
+class B210ReadOverflow(RuntimeError):
+    """Raised when the B210 reports an RX overflow."""
+
+
 class SimulatedInterferometerSource(SampleSource):
     """Deterministic two-antenna source with geometric delay and noise."""
 
@@ -184,6 +188,10 @@ class B210SoapySource(SampleSource):
         ]
         timeout_us = max(self.config.b210_read_timeout_ms, 100) * 1000
         result = self._sdr.readStream(self._rx_stream, buffs, sample_count, timeoutUs=timeout_us)
+        if result.ret == -4:
+            raise B210ReadOverflow(
+                "B210 RX overflow. Try lower bandwidth, larger FX bins, or a faster computer."
+            )
         if result.ret <= 0:
             raise RuntimeError(f"B210 read failed with code {result.ret}.")
         return buffs[0][: result.ret], buffs[1][: result.ret]
