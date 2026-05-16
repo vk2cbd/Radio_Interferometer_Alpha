@@ -59,7 +59,7 @@ class InterferometryApp(tk.Tk):
 
         self.inputs: dict[str, tk.StringVar] = {}
         fields = [
-            ("observing_frequency_mhz", "Observing freq (MHz)", "8500.0"),
+            ("observing_frequency_mhz", "Observing freq (MHz)", "4800.0"),
             ("intermediate_frequency_mhz", "B210 tune IF (MHz)", "1150.0"),
             ("ra_deg", "Source RA (deg)", "83.6331"),
             ("dec_deg", "Source DEC (deg)", "22.0145"),

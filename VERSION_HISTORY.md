@@ -1,5 +1,11 @@
 # Version History
 
+## 0.1.5 - Updated 4800 MHz Default
+
+- Set the default observing frequency to 4800 MHz.
+- Kept the default B210 IF tune frequency at 1150 MHz.
+- Kept the default east baseline at 6 m.
+
 ## 0.1.4 - Updated Observing Defaults
 
 - Set the default observing frequency to 8500 MHz.
