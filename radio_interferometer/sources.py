@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import asin, atan2, cos, degrees, radians, sin
+from time import sleep
 
 import numpy as np
 
@@ -24,6 +25,9 @@ class ObservationConfig:
     baseline_east_m: float = 10.0
     baseline_north_m: float = 0.0
     baseline_up_m: float = 0.0
+    b210_gain_db: float = 35.0
+    b210_read_timeout_ms: int = 1000
+    b210_device_args: str = ""
 
     @property
     def sample_rate_hz(self) -> float:
@@ -110,14 +114,56 @@ class B210SoapySource(SampleSource):
                 "SoapySDR is not installed. Install UHD/SoapySDR or use the simulator."
             ) from exc
 
-        sdr = SoapySDR.Device({"driver": "uhd"})
-        for channel in (0, 1):
-            sdr.setSampleRate(SOAPY_SDR_RX, channel, self.config.sample_rate_hz)
-            sdr.setFrequency(SOAPY_SDR_RX, channel, self.config.intermediate_frequency_hz)
-            sdr.setGainMode(SOAPY_SDR_RX, channel, True)
+        sdr = None
+        rx_stream = None
+        try:
+            device_args = {"driver": "uhd", **parse_device_args(self.config.b210_device_args)}
+            sdr = run_b210_step("open B210 device", lambda: SoapySDR.Device(device_args))
+            sleep(0.25)
 
-        rx_stream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32, [0, 1])
-        sdr.activateStream(rx_stream)
+            for channel in (0, 1):
+                run_b210_step(
+                    f"set channel {channel} sample rate",
+                    lambda channel=channel: sdr.setSampleRate(
+                        SOAPY_SDR_RX, channel, self.config.sample_rate_hz
+                    ),
+                )
+                run_b210_step(
+                    f"set channel {channel} RF bandwidth",
+                    lambda channel=channel: sdr.setBandwidth(
+                        SOAPY_SDR_RX, channel, self.config.sample_rate_hz
+                    ),
+                )
+                run_b210_step(
+                    f"tune channel {channel}",
+                    lambda channel=channel: sdr.setFrequency(
+                        SOAPY_SDR_RX, channel, self.config.intermediate_frequency_hz
+                    ),
+                )
+                run_b210_step(
+                    f"disable channel {channel} AGC",
+                    lambda channel=channel: sdr.setGainMode(SOAPY_SDR_RX, channel, False),
+                )
+                run_b210_step(
+                    f"set channel {channel} gain",
+                    lambda channel=channel: sdr.setGain(
+                        SOAPY_SDR_RX, channel, self.config.b210_gain_db
+                    ),
+                )
+
+            rx_stream = run_b210_step(
+                "create two-channel RX stream",
+                lambda: sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32, [0, 1]),
+            )
+            run_b210_step("activate RX stream", lambda: sdr.activateStream(rx_stream))
+        except Exception:
+            if sdr is not None and rx_stream is not None:
+                try:
+                    sdr.closeStream(rx_stream)
+                except Exception:
+                    pass
+            raise
+
         self._sdr = sdr
         self._rx_stream = rx_stream
 
@@ -136,10 +182,36 @@ class B210SoapySource(SampleSource):
             np.empty(sample_count, dtype=np.complex64),
             np.empty(sample_count, dtype=np.complex64),
         ]
-        result = self._sdr.readStream(self._rx_stream, buffs, sample_count, timeoutUs=200_000)
+        timeout_us = max(self.config.b210_read_timeout_ms, 100) * 1000
+        result = self._sdr.readStream(self._rx_stream, buffs, sample_count, timeoutUs=timeout_us)
         if result.ret <= 0:
             raise RuntimeError(f"B210 read failed with code {result.ret}.")
         return buffs[0][: result.ret], buffs[1][: result.ret]
+
+
+def parse_device_args(raw_args: str) -> dict[str, str]:
+    """Parse comma-separated SoapySDR device args such as serial=123,type=b200."""
+
+    parsed: dict[str, str] = {}
+    for item in raw_args.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" not in item:
+            raise ValueError(f"B210 device arg must be key=value: {item}")
+        key, value = item.split("=", 1)
+        parsed[key.strip()] = value.strip()
+    return parsed
+
+
+def run_b210_step(step_name: str, action):
+    """Run a Soapy/UHD call and preserve the failing setup step in the GUI error."""
+
+    try:
+        return action()
+    except Exception as exc:
+        detail = str(exc).strip() or exc.__class__.__name__
+        raise RuntimeError(f"B210 failed while trying to {step_name}: {detail}") from exc
 
 
 def geometric_delay_seconds(config: ObservationConfig, when: datetime | None = None) -> float:

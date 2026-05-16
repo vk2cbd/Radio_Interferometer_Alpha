@@ -33,6 +33,24 @@ For an Ettus B210 hardware path, install the UHD/SoapySDR stack for your Ubuntu
 release and make sure the B210 is visible before selecting `B210 / SoapySDR` in
 the GUI.
 
+Useful B210 checks before starting the GUI:
+
+```bash
+uhd_find_devices
+uhd_usrp_probe
+SoapySDRUtil --find
+```
+
+If B210 startup reports a UHD control timeout such as
+`accum_timeout < _timeout in wait_for_ack`, first try:
+
+- Connect the B210 directly to a USB 3 port, not through a hub.
+- Close any other program using the B210.
+- Start with a low bandwidth such as `1.0` or `2.0` MHz.
+- Use manual B210 gain in the GUI, for example `35` dB.
+- If more than one SDR is connected, set `B210 device args` to the serial, for
+  example `serial=XXXXXXXX`.
+
 ## Version Control
 
 This directory is a Git repository. The first version is intended as a retained
@@ -47,6 +65,7 @@ baseline for future changes and should be pushed to `vk2cbd/test` on GitHub.
 - Bandwidth in MHz.
 - Number of FX frequency bins.
 - Baseline east/north/up in meters for geometric phase simulation.
+- B210 manual gain, read timeout, and optional SoapySDR device args.
 
 ## Notes
 

@@ -7,6 +7,7 @@ from radio_interferometer.sources import (
     SimulatedInterferometerSource,
     geometric_delay_seconds,
     horizontal_coordinates,
+    parse_device_args,
 )
 
 
@@ -57,3 +58,10 @@ def test_horizontal_coordinates_are_in_expected_ranges() -> None:
 
     assert -90.0 <= alt_deg <= 90.0
     assert 0.0 <= az_deg < 360.0
+
+
+def test_parse_device_args() -> None:
+    assert parse_device_args("serial=1234, type=b200") == {
+        "serial": "1234",
+        "type": "b200",
+    }

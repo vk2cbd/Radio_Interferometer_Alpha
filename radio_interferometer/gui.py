@@ -58,6 +58,9 @@ class InterferometryApp(tk.Tk):
             ("baseline_east_m", "Baseline east (m)", "10.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
+            ("b210_gain_db", "B210 gain (dB)", "35.0"),
+            ("b210_read_timeout_ms", "B210 read timeout (ms)", "1000"),
+            ("b210_device_args", "B210 device args", ""),
         ]
         for row, (key, label, default) in enumerate(fields, start=1):
             ttk.Label(panel, text=label).grid(row=row, column=0, sticky="w", pady=3)
@@ -188,10 +191,12 @@ class InterferometryApp(tk.Tk):
         self.canvas.draw_idle()
 
     def _read_config(self) -> ObservationConfig:
-        values: dict[str, float | int] = {}
+        values: dict[str, float | int | str] = {}
         for key, var in self.inputs.items():
             raw = var.get().strip()
-            if key == "bins":
+            if key == "b210_device_args":
+                values[key] = raw
+            elif key in {"bins", "b210_read_timeout_ms"}:
                 values[key] = int(raw)
             else:
                 values[key] = float(raw)
@@ -206,6 +211,10 @@ class InterferometryApp(tk.Tk):
             raise ValueError("Observer latitude must be between -90 and 90 degrees.")
         if not -90 <= values["dec_deg"] <= 90:
             raise ValueError("Source DEC must be between -90 and 90 degrees.")
+        if values["b210_read_timeout_ms"] < 100:
+            raise ValueError("B210 read timeout must be at least 100 ms.")
+        if values["b210_gain_db"] < 0:
+            raise ValueError("B210 gain must not be negative.")
 
         return ObservationConfig(**values)
 
