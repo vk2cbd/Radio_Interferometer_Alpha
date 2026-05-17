@@ -66,6 +66,7 @@ baseline for future changes and should be pushed to `vk2cbd/test` on GitHub.
 - Bandwidth in MHz.
 - Number of FX frequency bins.
 - Cross-correlation smoothing blocks for reducing noise in the correlation plot.
+- Realtime strongest-bin marker and SNR estimate on the cross-correlation plot.
 - Baseline east/north/up in meters for geometric phase simulation.
 - B210 manual gain, read timeout, and optional SoapySDR device args.
 

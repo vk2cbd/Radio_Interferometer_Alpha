@@ -30,6 +30,16 @@ class CorrelatorResult:
     lag_bins: np.ndarray
 
 
+@dataclass(frozen=True)
+class PeakSnr:
+    """Peak and signal-to-noise estimate for a magnitude spectrum."""
+
+    index: int
+    peak_value: float
+    noise_floor: float
+    snr: float
+
+
 class FXCorrelator:
     """Two-input FX correlator with exponential integration."""
 
@@ -88,3 +98,37 @@ class FXCorrelator:
             padded[: data.size] = data
             return padded
         return data[:count]
+
+
+def estimate_peak_snr(magnitudes: np.ndarray, exclusion_bins: int = 3) -> PeakSnr:
+    """Find the strongest bin and estimate SNR against the surrounding noise floor."""
+
+    values = np.asarray(magnitudes, dtype=np.float64)
+    if values.size == 0:
+        raise ValueError("Cannot estimate SNR from an empty spectrum.")
+    if exclusion_bins < 0:
+        raise ValueError("Exclusion bins must not be negative.")
+
+    peak_index = int(np.nanargmax(values))
+    peak_value = float(values[peak_index])
+
+    mask = np.ones(values.size, dtype=bool)
+    start = max(0, peak_index - exclusion_bins)
+    stop = min(values.size, peak_index + exclusion_bins + 1)
+    mask[start:stop] = False
+    noise_values = values[mask]
+    if noise_values.size == 0:
+        noise_values = values
+
+    noise_floor = float(np.nanmedian(noise_values))
+    if not np.isfinite(noise_floor) or noise_floor <= 0.0:
+        noise_floor = float(np.nanmean(noise_values))
+    if not np.isfinite(noise_floor) or noise_floor <= 0.0:
+        noise_floor = 1e-12
+
+    return PeakSnr(
+        index=peak_index,
+        peak_value=peak_value,
+        noise_floor=noise_floor,
+        snr=peak_value / noise_floor,
+    )

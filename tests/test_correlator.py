@@ -1,6 +1,6 @@
 import numpy as np
 
-from radio_interferometer.correlator import CorrelatorConfig, FXCorrelator
+from radio_interferometer.correlator import CorrelatorConfig, FXCorrelator, estimate_peak_snr
 
 
 def test_fx_correlator_returns_requested_bin_count() -> None:
@@ -41,3 +41,17 @@ def test_fx_correlator_uses_averaging_blocks_for_alpha() -> None:
     config = CorrelatorConfig(sample_rate_hz=1_000_000.0, bins=64, averaging_blocks=16)
 
     assert config.integration_alpha == 1.0 / 16.0
+
+
+def test_estimate_peak_snr_excludes_peak_neighborhood() -> None:
+    spectrum = np.ones(16)
+    spectrum[8] = 10.0
+    spectrum[7] = 4.0
+    spectrum[9] = 5.0
+
+    result = estimate_peak_snr(spectrum, exclusion_bins=1)
+
+    assert result.index == 8
+    assert result.peak_value == 10.0
+    assert result.noise_floor == 1.0
+    assert result.snr == 10.0

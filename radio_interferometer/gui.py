@@ -11,7 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 
 from . import __version__
-from .correlator import CorrelatorConfig, FXCorrelator
+from .correlator import CorrelatorConfig, FXCorrelator, estimate_peak_snr
 from .sources import (
     B210ReadOverflow,
     B210SoapySource,
@@ -21,7 +21,7 @@ from .sources import (
 )
 
 GUI_REFRESH_MS = 80
-MAX_BLOCKS_PER_UPDATE = 256
+MAX_BLOCKS_PER_UPDATE = 2048
 
 
 class InterferometryApp(tk.Tk):
@@ -65,15 +65,15 @@ class InterferometryApp(tk.Tk):
             ("dec_deg", "Source DEC (deg)", "22.0145"),
             ("observer_lat_deg", "Observer lat (deg)", "-33.8688"),
             ("observer_lon_deg", "Observer lon (deg)", "151.2093"),
-            ("bandwidth_mhz", "Bandwidth (MHz)", "2.0"),
-            ("bins", "FX bins", "1024"),
-            ("averaging_blocks", "X-corr smoothing blocks", "32"),
+            ("bandwidth_mhz", "Bandwidth (MHz)", "30.72"),
+            ("bins", "FX bins", "2048"),
+            ("averaging_blocks", "X-corr smoothing blocks", "8196"),
             ("baseline_east_m", "Baseline east (m)", "6.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
-            ("b210_gain_db", "B210 gain (dB)", "35.0"),
+            ("b210_gain_db", "B210 gain (dB)", "70.0"),
             ("b210_read_timeout_ms", "B210 read timeout (ms)", "1000"),
-            ("b210_device_args", "B210 device args", ""),
+            ("b210_device_args", "B210 device args", "num_recv_frames=256"),
         ]
         for row, (key, label, default) in enumerate(fields, start=1):
             ttk.Label(panel, text=label).grid(row=row, column=0, sticky="w", pady=3)
@@ -117,6 +117,20 @@ class InterferometryApp(tk.Tk):
         (self.interferogram_line,) = self.ax_interferogram.plot([], [], color="#1f77b4", lw=1.4)
         (self.spectrum_line,) = self.ax_spectrum.plot([], [], color="#2ca02c", lw=1.3)
         (self.phase_line,) = self.ax_phase.plot([], [], color="#d62728", lw=1.0, alpha=0.78)
+        self.peak_vline = self.ax_spectrum.axvline(0.0, color="#111111", lw=1.0, ls="--", alpha=0.7)
+        (self.peak_marker,) = self.ax_spectrum.plot(
+            [], [], marker="o", ms=6, color="#111111", linestyle="None"
+        )
+        self.snr_text = self.ax_spectrum.text(
+            0.02,
+            0.94,
+            "Peak: --\nSNR: --",
+            transform=self.ax_spectrum.transAxes,
+            va="top",
+            ha="left",
+            fontsize=9,
+            bbox={"boxstyle": "round,pad=0.25", "facecolor": "white", "alpha": 0.75},
+        )
 
         self.figure.tight_layout()
 
@@ -213,6 +227,8 @@ class InterferometryApp(tk.Tk):
         interferogram_mag = np.abs(result.interferogram)
         spectrum_mag = np.abs(result.cross_spectrum)
         phase = np.angle(result.cross_spectrum)
+        peak_snr = estimate_peak_snr(spectrum_mag)
+        peak_freq_mhz = float(sky_freq_mhz[peak_snr.index])
 
         self.interferogram_line.set_data(result.lag_bins, interferogram_mag)
         self.ax_interferogram.set_xlim(float(result.lag_bins.min()), float(result.lag_bins.max()))
@@ -220,6 +236,13 @@ class InterferometryApp(tk.Tk):
 
         self.spectrum_line.set_data(sky_freq_mhz, spectrum_mag)
         self.phase_line.set_data(sky_freq_mhz, phase)
+        self.peak_marker.set_data([peak_freq_mhz], [peak_snr.peak_value])
+        self.peak_vline.set_xdata([peak_freq_mhz, peak_freq_mhz])
+        self.snr_text.set_text(
+            f"Peak: {peak_freq_mhz:.6f} MHz\n"
+            f"SNR: {peak_snr.snr:.2f}\n"
+            f"Noise: {peak_snr.noise_floor:.3g}"
+        )
         self.ax_spectrum.set_xlim(float(sky_freq_mhz.min()), float(sky_freq_mhz.max()))
         self.ax_spectrum.set_ylim(0, max(float(spectrum_mag.max()) * 1.15, 1e-6))
         self.ax_phase.set_ylim(-np.pi, np.pi)

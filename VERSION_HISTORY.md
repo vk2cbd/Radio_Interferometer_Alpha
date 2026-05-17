@@ -1,5 +1,14 @@
 # Version History
 
+## 0.1.8-dev - Cross-Correlation Peak Marker and SNR
+
+- Branched from the frozen `v0.1.7` baseline.
+- Added a realtime peak marker on the cross-correlation spectrum.
+- Added a realtime SNR estimate using the strongest cross-correlation bin and
+  the median non-peak spectrum level.
+- Updated default bandwidth to 30.72 MHz, FX bins to 2048, smoothing to 8196
+  blocks, B210 gain to 70 dB, and B210 device args to `num_recv_frames=256`.
+
 ## 0.1.7 - Clear Cross-Correlation Smoothing Control
 
 - Renamed the averaging GUI field to `X-corr smoothing blocks`.
