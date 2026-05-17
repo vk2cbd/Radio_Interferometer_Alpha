@@ -1,5 +1,10 @@
 # Version History
 
+## 0.1.6 - GUI Averaging Control
+
+- Added an averaging blocks GUI parameter for reducing correlation plot noise.
+- Use the averaging value to set the FX correlator integration length.
+
 ## 0.1.5 - Updated 4800 MHz Default
 
 - Set the default observing frequency to 4800 MHz.

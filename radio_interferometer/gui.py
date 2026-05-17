@@ -67,6 +67,7 @@ class InterferometryApp(tk.Tk):
             ("observer_lon_deg", "Observer lon (deg)", "151.2093"),
             ("bandwidth_mhz", "Bandwidth (MHz)", "2.0"),
             ("bins", "FX bins", "1024"),
+            ("averaging_blocks", "Averaging blocks", "32"),
             ("baseline_east_m", "Baseline east (m)", "6.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
@@ -129,7 +130,11 @@ class InterferometryApp(tk.Tk):
             config = self._read_config()
             source = self._make_source(config)
             correlator = FXCorrelator(
-                CorrelatorConfig(sample_rate_hz=config.sample_rate_hz, bins=config.bins)
+                CorrelatorConfig(
+                    sample_rate_hz=config.sample_rate_hz,
+                    bins=config.bins,
+                    averaging_blocks=config.averaging_blocks,
+                )
             )
             source.start()
         except Exception as exc:
@@ -227,7 +232,7 @@ class InterferometryApp(tk.Tk):
             raw = var.get().strip()
             if key == "b210_device_args":
                 values[key] = raw
-            elif key in {"bins", "b210_read_timeout_ms"}:
+            elif key in {"bins", "averaging_blocks", "b210_read_timeout_ms"}:
                 values[key] = int(raw)
             else:
                 values[key] = float(raw)
@@ -238,6 +243,8 @@ class InterferometryApp(tk.Tk):
             raise ValueError("FX bins must be at least 8.")
         if values["bins"] & (values["bins"] - 1):
             raise ValueError("FX bins should be a power of two for realtime FFT performance.")
+        if values["averaging_blocks"] < 1:
+            raise ValueError("Averaging blocks must be at least 1.")
         if not -90 <= values["observer_lat_deg"] <= 90:
             raise ValueError("Observer latitude must be between -90 and 90 degrees.")
         if not -90 <= values["dec_deg"] <= 90:

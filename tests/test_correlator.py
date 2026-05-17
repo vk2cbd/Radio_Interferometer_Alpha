@@ -35,3 +35,9 @@ def test_fx_correlator_rejects_invalid_config() -> None:
         assert "Sample rate" in str(exc)
     else:
         raise AssertionError("Expected invalid sample rate to raise ValueError")
+
+
+def test_fx_correlator_uses_averaging_blocks_for_alpha() -> None:
+    config = CorrelatorConfig(sample_rate_hz=1_000_000.0, bins=64, averaging_blocks=16)
+
+    assert config.integration_alpha == 1.0 / 16.0

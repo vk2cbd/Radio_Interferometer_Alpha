@@ -65,6 +65,7 @@ baseline for future changes and should be pushed to `vk2cbd/test` on GitHub.
 - Observer latitude and longitude in decimal degrees.
 - Bandwidth in MHz.
 - Number of FX frequency bins.
+- Number of averaging blocks for cross-correlation integration.
 - Baseline east/north/up in meters for geometric phase simulation.
 - B210 manual gain, read timeout, and optional SoapySDR device args.
 

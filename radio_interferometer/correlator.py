@@ -13,7 +13,11 @@ class CorrelatorConfig:
 
     sample_rate_hz: float
     bins: int
-    integration_alpha: float = 0.18
+    averaging_blocks: int = 32
+
+    @property
+    def integration_alpha(self) -> float:
+        return 1.0 / self.averaging_blocks
 
 
 @dataclass
@@ -34,8 +38,8 @@ class FXCorrelator:
             raise ValueError("FX bin count must be at least 8.")
         if config.sample_rate_hz <= 0:
             raise ValueError("Sample rate must be positive.")
-        if not 0 < config.integration_alpha <= 1:
-            raise ValueError("Integration alpha must be in the range (0, 1].")
+        if config.averaging_blocks < 1:
+            raise ValueError("Averaging blocks must be at least 1.")
 
         self.config = config
         self._window = np.hanning(config.bins).astype(np.float64)

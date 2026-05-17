@@ -22,6 +22,7 @@ class ObservationConfig:
     observer_lon_deg: float
     bandwidth_mhz: float
     bins: int
+    averaging_blocks: int = 32
     baseline_east_m: float = 10.0
     baseline_north_m: float = 0.0
     baseline_up_m: float = 0.0
