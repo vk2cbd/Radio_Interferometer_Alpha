@@ -1,5 +1,10 @@
 # Version History
 
+## 0.1.7 - Clear Cross-Correlation Smoothing Control
+
+- Renamed the averaging GUI field to `X-corr smoothing blocks`.
+- Show the active smoothing block count in the run status.
+
 ## 0.1.6 - GUI Averaging Control
 
 - Added an averaging blocks GUI parameter for reducing correlation plot noise.

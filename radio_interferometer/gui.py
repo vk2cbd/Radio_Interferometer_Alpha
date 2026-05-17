@@ -67,7 +67,7 @@ class InterferometryApp(tk.Tk):
             ("observer_lon_deg", "Observer lon (deg)", "151.2093"),
             ("bandwidth_mhz", "Bandwidth (MHz)", "2.0"),
             ("bins", "FX bins", "1024"),
-            ("averaging_blocks", "Averaging blocks", "32"),
+            ("averaging_blocks", "X-corr smoothing blocks", "32"),
             ("baseline_east_m", "Baseline east (m)", "6.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
@@ -150,7 +150,7 @@ class InterferometryApp(tk.Tk):
         self._running = True
         self.start_button.configure(state=tk.DISABLED)
         self.stop_button.configure(state=tk.NORMAL)
-        self.status.set("Running")
+        self.status.set(f"Running; X-corr smoothing {config.averaging_blocks} blocks")
         self.after(20, self._update_loop)
 
     def stop(self) -> None:
