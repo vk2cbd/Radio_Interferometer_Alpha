@@ -69,6 +69,10 @@ baseline for future changes and should be pushed to `vk2cbd/test` on GitHub.
 - Spectrum and phase plot visibility controls. Spectrum is on by default; phase
   is off by default.
 - Spectrum smoothing bins for the plotted spectrum envelope line.
+- Live parameter updates while the app is running. Stream and correlator
+  settings are re-applied after valid edits.
+- Saved GUI settings are restored the next time the app starts.
+- Auto/manual Y-axis scaling controls for the interferogram and spectrum plots.
 - Realtime strongest-lag marker and SNR estimate on the interferogram plot.
 - Baseline east/north/up in meters for geometric phase simulation.
 - B210 manual gain, read timeout, and optional SoapySDR device args.

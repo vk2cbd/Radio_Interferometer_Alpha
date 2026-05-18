@@ -9,6 +9,10 @@
 - Added spectrum and phase plot radio-button visibility controls, with spectrum
   on and phase off by default.
 - Added spectrum smoothing bins for the displayed spectrum envelope line.
+- Added live GUI parameter updates while the app is running.
+- Added persisted GUI settings loaded at startup.
+- Added auto/manual Y-axis scale controls for the interferogram and spectrum
+  plots.
 - Updated default bandwidth to 30.72 MHz, FX bins to 2048, smoothing to 8196
   blocks, B210 gain to 70 dB, and B210 device args to `num_recv_frames=256`.
 

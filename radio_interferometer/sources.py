@@ -56,6 +56,9 @@ class SampleSource:
     def read(self, sample_count: int) -> tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError
 
+    def update_config(self, config: ObservationConfig) -> None:
+        self.config = config
+
 
 class B210ReadOverflow(RuntimeError):
     """Raised when the B210 reports an RX overflow."""
@@ -75,6 +78,9 @@ class SimulatedInterferometerSource(SampleSource):
 
     def stop(self) -> None:
         self._running = False
+
+    def update_config(self, config: ObservationConfig) -> None:
+        self.config = config
 
     def read(self, sample_count: int) -> tuple[np.ndarray, np.ndarray]:
         if not self._running:
@@ -179,6 +185,52 @@ class B210SoapySource(SampleSource):
             self._sdr.closeStream(self._rx_stream)
         self._sdr = None
         self._rx_stream = None
+
+    def update_config(self, config: ObservationConfig) -> None:
+        if self._sdr is None:
+            self.config = config
+            return
+
+        try:
+            from SoapySDR import SOAPY_SDR_RX  # type: ignore
+        except ImportError:
+            self.config = config
+            return
+
+        if config.bandwidth_mhz != self.config.bandwidth_mhz:
+            for channel in (0, 1):
+                run_b210_step(
+                    f"set channel {channel} sample rate",
+                    lambda channel=channel: self._sdr.setSampleRate(
+                        SOAPY_SDR_RX, channel, config.sample_rate_hz
+                    ),
+                )
+                run_b210_step(
+                    f"set channel {channel} RF bandwidth",
+                    lambda channel=channel: self._sdr.setBandwidth(
+                        SOAPY_SDR_RX, channel, config.sample_rate_hz
+                    ),
+                )
+
+        if config.intermediate_frequency_mhz != self.config.intermediate_frequency_mhz:
+            for channel in (0, 1):
+                run_b210_step(
+                    f"tune channel {channel}",
+                    lambda channel=channel: self._sdr.setFrequency(
+                        SOAPY_SDR_RX, channel, config.intermediate_frequency_hz
+                    ),
+                )
+
+        if config.b210_gain_db != self.config.b210_gain_db:
+            for channel in (0, 1):
+                run_b210_step(
+                    f"set channel {channel} gain",
+                    lambda channel=channel: self._sdr.setGain(
+                        SOAPY_SDR_RX, channel, config.b210_gain_db
+                    ),
+                )
+
+        self.config = config
 
     def read(self, sample_count: int) -> tuple[np.ndarray, np.ndarray]:
         if self._sdr is None or self._rx_stream is None:
