@@ -120,7 +120,7 @@ class InterferometryApp(tk.Tk):
             self.inputs[key] = value
             ttk.Entry(panel, textvariable=value, width=18).grid(row=row, column=1, sticky="ew", pady=3)
 
-        button_row = len(fields) + 1
+        button_row = len(fields) + 3
         self.start_button = ttk.Button(panel, text="Start", command=self.start)
         self.start_button.grid(row=button_row, column=0, sticky="ew", pady=(14, 3))
         self.stop_button = ttk.Button(panel, text="Stop", command=self.stop, state=tk.DISABLED)
