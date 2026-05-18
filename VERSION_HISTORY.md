@@ -6,6 +6,9 @@
 - Added a realtime peak marker on the interferogram.
 - Added a realtime SNR estimate using the strongest lag bin and the median
   non-peak interferogram level.
+- Added spectrum and phase plot radio-button visibility controls, with spectrum
+  on and phase off by default.
+- Added spectrum smoothing bins for the displayed spectrum envelope line.
 - Updated default bandwidth to 30.72 MHz, FX bins to 2048, smoothing to 8196
   blocks, B210 gain to 70 dB, and B210 device args to `num_recv_frames=256`.
 
