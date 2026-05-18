@@ -23,6 +23,7 @@ class ObservationConfig:
     bandwidth_mhz: float
     bins: int
     averaging_blocks: int = 32
+    spectrum_smoothing_bins: int = 1
     baseline_east_m: float = 10.0
     baseline_north_m: float = 0.0
     baseline_up_m: float = 0.0
