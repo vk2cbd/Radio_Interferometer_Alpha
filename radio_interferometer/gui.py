@@ -57,6 +57,44 @@ class InterferometryApp(tk.Tk):
             width=18,
         ).grid(row=0, column=1, sticky="ew", pady=(0, 8))
 
+        self.spectrum_plot_mode = tk.StringVar(value="on")
+        self.phase_plot_mode = tk.StringVar(value="off")
+        ttk.Label(panel, text="Spectrum plot").grid(row=1, column=0, sticky="w", pady=3)
+        spectrum_options = ttk.Frame(panel)
+        spectrum_options.grid(row=1, column=1, sticky="w", pady=3)
+        ttk.Radiobutton(
+            spectrum_options,
+            text="On",
+            variable=self.spectrum_plot_mode,
+            value="on",
+            command=self._apply_plot_visibility,
+        ).pack(side=tk.LEFT)
+        ttk.Radiobutton(
+            spectrum_options,
+            text="Off",
+            variable=self.spectrum_plot_mode,
+            value="off",
+            command=self._apply_plot_visibility,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        ttk.Label(panel, text="Phase plot").grid(row=2, column=0, sticky="w", pady=3)
+        phase_options = ttk.Frame(panel)
+        phase_options.grid(row=2, column=1, sticky="w", pady=3)
+        ttk.Radiobutton(
+            phase_options,
+            text="On",
+            variable=self.phase_plot_mode,
+            value="on",
+            command=self._apply_plot_visibility,
+        ).pack(side=tk.LEFT)
+        ttk.Radiobutton(
+            phase_options,
+            text="Off",
+            variable=self.phase_plot_mode,
+            value="off",
+            command=self._apply_plot_visibility,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
         self.inputs: dict[str, tk.StringVar] = {}
         fields = [
             ("observing_frequency_mhz", "Observing freq (MHz)", "4800.0"),
@@ -68,6 +106,7 @@ class InterferometryApp(tk.Tk):
             ("bandwidth_mhz", "Bandwidth (MHz)", "30.72"),
             ("bins", "FX bins", "2048"),
             ("averaging_blocks", "X-corr smoothing blocks", "8196"),
+            ("spectrum_smoothing_bins", "Spectrum smoothing bins", "1"),
             ("baseline_east_m", "Baseline east (m)", "6.0"),
             ("baseline_north_m", "Baseline north (m)", "0.0"),
             ("baseline_up_m", "Baseline up (m)", "0.0"),
@@ -75,7 +114,7 @@ class InterferometryApp(tk.Tk):
             ("b210_read_timeout_ms", "B210 read timeout (ms)", "1000"),
             ("b210_device_args", "B210 device args", "num_recv_frames=256"),
         ]
-        for row, (key, label, default) in enumerate(fields, start=1):
+        for row, (key, label, default) in enumerate(fields, start=3):
             ttk.Label(panel, text=label).grid(row=row, column=0, sticky="w", pady=3)
             value = tk.StringVar(value=default)
             self.inputs[key] = value
@@ -115,7 +154,9 @@ class InterferometryApp(tk.Tk):
         self.ax_phase.set_ylabel("Phase (rad)")
 
         (self.interferogram_line,) = self.ax_interferogram.plot([], [], color="#1f77b4", lw=1.4)
-        (self.spectrum_line,) = self.ax_spectrum.plot([], [], color="#2ca02c", lw=1.3)
+        (self.spectrum_line,) = self.ax_spectrum.plot(
+            [], [], color="#2ca02c", lw=1.3, drawstyle="default"
+        )
         (self.phase_line,) = self.ax_phase.plot([], [], color="#d62728", lw=1.0, alpha=0.78)
         self.peak_vline = self.ax_interferogram.axvline(
             0.0, color="#111111", lw=1.0, ls="--", alpha=0.7
@@ -135,6 +176,7 @@ class InterferometryApp(tk.Tk):
         )
 
         self.figure.tight_layout()
+        self._apply_plot_visibility(draw=False)
 
         self.canvas = FigureCanvasTkAgg(self.figure, master=plot_frame)
         self.canvas.draw()
@@ -228,6 +270,7 @@ class InterferometryApp(tk.Tk):
         sky_freq_mhz = config.observing_frequency_mhz + result.frequency_offsets_hz / 1_000_000.0
         interferogram_mag = np.abs(result.interferogram)
         spectrum_mag = np.abs(result.cross_spectrum)
+        spectrum_envelope = smooth_line(spectrum_mag, config.spectrum_smoothing_bins)
         phase = np.angle(result.cross_spectrum)
         peak_snr = estimate_peak_snr(interferogram_mag)
         peak_lag_bin = float(result.lag_bins[peak_snr.index])
@@ -243,11 +286,12 @@ class InterferometryApp(tk.Tk):
         self.ax_interferogram.set_xlim(float(result.lag_bins.min()), float(result.lag_bins.max()))
         self.ax_interferogram.set_ylim(0, max(float(interferogram_mag.max()) * 1.15, 1e-6))
 
-        self.spectrum_line.set_data(sky_freq_mhz, spectrum_mag)
+        self.spectrum_line.set_data(sky_freq_mhz, spectrum_envelope)
         self.phase_line.set_data(sky_freq_mhz, phase)
         self.ax_spectrum.set_xlim(float(sky_freq_mhz.min()), float(sky_freq_mhz.max()))
-        self.ax_spectrum.set_ylim(0, max(float(spectrum_mag.max()) * 1.15, 1e-6))
+        self.ax_spectrum.set_ylim(0, max(float(spectrum_envelope.max()) * 1.15, 1e-6))
         self.ax_phase.set_ylim(-np.pi, np.pi)
+        self._apply_plot_visibility(draw=False)
 
         self.canvas.draw_idle()
 
@@ -257,7 +301,12 @@ class InterferometryApp(tk.Tk):
             raw = var.get().strip()
             if key == "b210_device_args":
                 values[key] = raw
-            elif key in {"bins", "averaging_blocks", "b210_read_timeout_ms"}:
+            elif key in {
+                "bins",
+                "averaging_blocks",
+                "spectrum_smoothing_bins",
+                "b210_read_timeout_ms",
+            }:
                 values[key] = int(raw)
             else:
                 values[key] = float(raw)
@@ -270,6 +319,8 @@ class InterferometryApp(tk.Tk):
             raise ValueError("FX bins should be a power of two for realtime FFT performance.")
         if values["averaging_blocks"] < 1:
             raise ValueError("Averaging blocks must be at least 1.")
+        if values["spectrum_smoothing_bins"] < 1:
+            raise ValueError("Spectrum smoothing bins must be at least 1.")
         if not -90 <= values["observer_lat_deg"] <= 90:
             raise ValueError("Observer latitude must be between -90 and 90 degrees.")
         if not -90 <= values["dec_deg"] <= 90:
@@ -293,6 +344,25 @@ class InterferometryApp(tk.Tk):
         samples_per_update = config.sample_rate_hz * (GUI_REFRESH_MS / 1000.0)
         blocks = ceil(samples_per_update / config.bins)
         return max(1, min(MAX_BLOCKS_PER_UPDATE, blocks))
+
+    def _apply_plot_visibility(self, draw: bool = True) -> None:
+        spectrum_enabled = self.spectrum_plot_mode.get() == "on"
+        phase_enabled = self.phase_plot_mode.get() == "on"
+        self.spectrum_line.set_visible(spectrum_enabled)
+        self.phase_line.set_visible(phase_enabled)
+        self.ax_phase.set_visible(phase_enabled)
+        if draw:
+            self.canvas.draw_idle()
+
+
+def smooth_line(values: np.ndarray, bins: int) -> np.ndarray:
+    """Return a moving-average envelope for a plotted spectrum line."""
+
+    if bins <= 1 or values.size < 2:
+        return values
+    width = min(int(bins), values.size)
+    kernel = np.ones(width, dtype=np.float64) / width
+    return np.convolve(values, kernel, mode="same")
 
 
 def main() -> None:
