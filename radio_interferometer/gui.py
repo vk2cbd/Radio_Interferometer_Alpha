@@ -117,15 +117,17 @@ class InterferometryApp(tk.Tk):
         (self.interferogram_line,) = self.ax_interferogram.plot([], [], color="#1f77b4", lw=1.4)
         (self.spectrum_line,) = self.ax_spectrum.plot([], [], color="#2ca02c", lw=1.3)
         (self.phase_line,) = self.ax_phase.plot([], [], color="#d62728", lw=1.0, alpha=0.78)
-        self.peak_vline = self.ax_spectrum.axvline(0.0, color="#111111", lw=1.0, ls="--", alpha=0.7)
-        (self.peak_marker,) = self.ax_spectrum.plot(
+        self.peak_vline = self.ax_interferogram.axvline(
+            0.0, color="#111111", lw=1.0, ls="--", alpha=0.7
+        )
+        (self.peak_marker,) = self.ax_interferogram.plot(
             [], [], marker="o", ms=6, color="#111111", linestyle="None"
         )
-        self.snr_text = self.ax_spectrum.text(
+        self.snr_text = self.ax_interferogram.text(
             0.02,
             0.94,
             "Peak: --\nSNR: --",
-            transform=self.ax_spectrum.transAxes,
+            transform=self.ax_interferogram.transAxes,
             va="top",
             ha="left",
             fontsize=9,
@@ -227,22 +229,22 @@ class InterferometryApp(tk.Tk):
         interferogram_mag = np.abs(result.interferogram)
         spectrum_mag = np.abs(result.cross_spectrum)
         phase = np.angle(result.cross_spectrum)
-        peak_snr = estimate_peak_snr(spectrum_mag)
-        peak_freq_mhz = float(sky_freq_mhz[peak_snr.index])
+        peak_snr = estimate_peak_snr(interferogram_mag)
+        peak_lag_bin = float(result.lag_bins[peak_snr.index])
 
         self.interferogram_line.set_data(result.lag_bins, interferogram_mag)
+        self.peak_marker.set_data([peak_lag_bin], [peak_snr.peak_value])
+        self.peak_vline.set_xdata([peak_lag_bin, peak_lag_bin])
+        self.snr_text.set_text(
+            f"Peak lag: {peak_lag_bin:.0f}\n"
+            f"SNR: {peak_snr.snr:.2f}\n"
+            f"Noise: {peak_snr.noise_floor:.3g}"
+        )
         self.ax_interferogram.set_xlim(float(result.lag_bins.min()), float(result.lag_bins.max()))
         self.ax_interferogram.set_ylim(0, max(float(interferogram_mag.max()) * 1.15, 1e-6))
 
         self.spectrum_line.set_data(sky_freq_mhz, spectrum_mag)
         self.phase_line.set_data(sky_freq_mhz, phase)
-        self.peak_marker.set_data([peak_freq_mhz], [peak_snr.peak_value])
-        self.peak_vline.set_xdata([peak_freq_mhz, peak_freq_mhz])
-        self.snr_text.set_text(
-            f"Peak: {peak_freq_mhz:.6f} MHz\n"
-            f"SNR: {peak_snr.snr:.2f}\n"
-            f"Noise: {peak_snr.noise_floor:.3g}"
-        )
         self.ax_spectrum.set_xlim(float(sky_freq_mhz.min()), float(sky_freq_mhz.max()))
         self.ax_spectrum.set_ylim(0, max(float(spectrum_mag.max()) * 1.15, 1e-6))
         self.ax_phase.set_ylim(-np.pi, np.pi)
